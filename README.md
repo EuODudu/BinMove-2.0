@@ -163,3 +163,4 @@ TrashMove é um sistema inovador que transforma a gestão de resíduos através 
 
 **Transformando lixo em valor, uma coleta por vez** 🌱
 
+
