@@ -42,8 +42,15 @@ window.addEventListener('scroll', () => {
         navbar.classList.remove('scrolled');
     }
     
+    // Hide/show navbar on scroll
+    if (currentScroll > lastScroll && currentScroll > 200) {
+        navbar.style.transform = 'translateY(-100%)';
+    } else {
+        navbar.style.transform = 'translateY(0)';
+    }
+    
     lastScroll = currentScroll;
-});
+}, { passive: true });
 
 // ========== Active Navigation Link ==========
 const sections = document.querySelectorAll('section[id]');
@@ -107,6 +114,9 @@ scrollTopBtn?.addEventListener('click', () => {
     });
 });
 
+// ========== Global Variables ==========
+let isPhoneAnimating = false;
+
 // ========== Intersection Observer for Animations ==========
 const observerOptions = {
     threshold: 0.1,
@@ -114,10 +124,13 @@ const observerOptions = {
 };
 
 const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
+    entries.forEach((entry, index) => {
         if (entry.isIntersecting) {
+            setTimeout(() => {
             entry.target.style.opacity = '1';
-            entry.target.style.transform = 'translateY(0)';
+                entry.target.style.transform = 'translateY(0) scale(1)';
+                entry.target.classList.add('animate-in');
+            }, index * 100);
         }
     });
 }, observerOptions);
@@ -125,9 +138,48 @@ const observer = new IntersectionObserver((entries) => {
 // Observe all feature cards and reward cards
 document.querySelectorAll('.feature-card, .reward-card, .impact-item, .rank-item').forEach(el => {
     el.style.opacity = '0';
-    el.style.transform = 'translateY(20px)';
-    el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    el.style.transform = 'translateY(30px) scale(0.95)';
+    el.style.transition = 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
     observer.observe(el);
+});
+
+// ========== Parallax Effect for Hero Section ==========
+let scrollTicking = false;
+window.addEventListener('scroll', () => {
+    if (!scrollTicking) {
+        window.requestAnimationFrame(() => {
+            const scrolled = window.pageYOffset;
+            const heroVisual = document.querySelector('.hero-visual');
+            
+            // Only apply parallax if phone is not being interacted with
+            if (heroVisual && scrolled < window.innerHeight * 1.5 && !isPhoneAnimating) {
+                const parallaxValue = scrolled * 0.15;
+                heroVisual.style.transform = `translateY(${parallaxValue}px)`;
+            }
+            scrollTicking = false;
+        });
+        scrollTicking = true;
+    }
+}, { passive: true });
+
+// ========== Smooth Reveal Animation for Sections ==========
+const sectionObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+        }
+    });
+}, {
+    threshold: 0.1,
+    rootMargin: '0px 0px -100px 0px'
+});
+
+document.querySelectorAll('section').forEach(section => {
+    section.style.opacity = '0';
+    section.style.transform = 'translateY(50px)';
+    section.style.transition = 'opacity 1s ease, transform 1s ease';
+    sectionObserver.observe(section);
 });
 
 // ========== Counter Animation for Stats ==========
@@ -358,10 +410,26 @@ document.querySelectorAll('.btn-reward').forEach(btn => {
         
         setTimeout(() => ripple.remove(), 600);
         
+        // Add pulse animation
+        this.style.animation = 'pulse 0.3s ease';
+        setTimeout(() => {
+            this.style.animation = '';
+        }, 300);
+        
         // Show notification
         showNotification('Recompensa adicionada ao carrinho!');
     });
 });
+
+// Add pulse animation
+const pulseStyle = document.createElement('style');
+pulseStyle.textContent = `
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+`;
+document.head.appendChild(pulseStyle);
 
 // ========== Premium Button Handler ==========
 document.querySelectorAll('.btn-premium, .btn-primary').forEach(btn => {
@@ -375,6 +443,9 @@ document.querySelectorAll('.btn-premium, .btn-primary').forEach(btn => {
 
 // ========== Notification System ==========
 function showNotification(message, type = 'success') {
+    // Remove existing notifications
+    document.querySelectorAll('.notification').forEach(n => n.remove());
+    
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.innerHTML = `
@@ -393,14 +464,16 @@ function showNotification(message, type = 'success') {
                 right: 20px;
                 background: white;
                 padding: 20px 30px;
-                border-radius: 12px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                border-radius: 16px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.25), 0 0 20px rgba(0, 200, 83, 0.2);
                 display: flex;
                 align-items: center;
                 gap: 15px;
                 z-index: 10000;
-                animation: slideInRight 0.3s ease;
+                animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                 border-left: 4px solid var(--primary);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
             }
             
             .notification-info {
@@ -410,17 +483,23 @@ function showNotification(message, type = 'success') {
             @keyframes slideInRight {
                 from {
                     opacity: 0;
-                    transform: translateX(100px);
+                    transform: translateX(100px) scale(0.9);
                 }
                 to {
                     opacity: 1;
-                    transform: translateX(0);
+                    transform: translateX(0) scale(1);
                 }
             }
             
             .notification-icon {
                 font-size: 1.5rem;
                 color: var(--primary);
+                animation: bounce 0.5s ease;
+            }
+            
+            @keyframes bounce {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.2); }
             }
             
             .notification-message {
@@ -496,14 +575,101 @@ document.querySelectorAll('.store-badge').forEach(badge => {
     });
 });
 
-// ========== Form Handling ==========
-// Initialize tooltips or additional form features if needed
+// ========== Cursor Effect for Interactive Elements ==========
 document.addEventListener('DOMContentLoaded', () => {
     console.log('TrashMove website loaded successfully! 🗑️🌿');
     
-    // Add any additional initialization here
-    // For example, initialize analytics, error tracking, etc.
+    // Add cursor hover effect for interactive elements
+    const interactiveElements = document.querySelectorAll('button, a, .feature-card, .reward-card, .rank-badge');
+    
+    interactiveElements.forEach(el => {
+        el.addEventListener('mouseenter', function() {
+            this.style.cursor = 'pointer';
+        });
+    });
+    
+    // Add loading animation
+    window.addEventListener('load', () => {
+        document.body.classList.add('loaded');
+    });
+    
+    // Add smooth reveal for page content
+    setTimeout(() => {
+        document.body.style.opacity = '1';
+    }, 100);
 });
+
+// ========== Mouse Move Parallax Effect for Phone ==========
+let mouseX = 0, mouseY = 0;
+let targetX = 0, targetY = 0;
+let currentX = 0, currentY = 0;
+
+document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    
+    if (!isPhoneAnimating) {
+        isPhoneAnimating = true;
+        animatePhoneParallax();
+    }
+}, { passive: true });
+
+// Smooth mouse tracking for phone mockup
+function animatePhoneParallax() {
+    const phoneMockup = document.querySelector('.phone-mockup');
+    const phoneFrame = document.querySelector('.phone-frame');
+    const heroVisual = document.querySelector('.hero-visual');
+    
+    if (!phoneMockup || !phoneFrame) {
+        isPhoneAnimating = false;
+        return;
+    }
+    
+    const rect = phoneMockup.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    const deltaX = (mouseX - centerX) / window.innerWidth;
+    const deltaY = (mouseY - centerY) / window.innerHeight;
+    
+    targetX = deltaX * 8;
+    targetY = deltaY * 8;
+    
+    // Smooth interpolation
+    currentX += (targetX - currentX) * 0.1;
+    currentY += (targetY - currentY) * 0.1;
+    
+    // Check if phone is hovered
+    const isHovered = phoneMockup.matches(':hover') || 
+                     (mouseX >= rect.left && mouseX <= rect.right && 
+                      mouseY >= rect.top && mouseY <= rect.bottom);
+    
+    if (isHovered && (Math.abs(currentX) > 0.1 || Math.abs(currentY) > 0.1)) {
+        // Disable CSS animation when interacting
+        phoneFrame.style.animation = 'none';
+        phoneFrame.style.transform = `translate(${currentX}px, ${currentY}px) rotateY(${currentX * 0.3}deg) rotateX(${-currentY * 0.2}deg)`;
+        
+        // Reset hero visual transform to allow phone movement
+        if (heroVisual) {
+            heroVisual.style.transform = '';
+        }
+        
+        requestAnimationFrame(animatePhoneParallax);
+    } else {
+        // Smooth return to center
+        if (Math.abs(currentX) > 0.1 || Math.abs(currentY) > 0.1) {
+            currentX *= 0.9;
+            currentY *= 0.9;
+            phoneFrame.style.transform = `translate(${currentX}px, ${currentY}px) rotateY(${currentX * 0.3}deg) rotateX(${-currentY * 0.2}deg)`;
+            requestAnimationFrame(animatePhoneParallax);
+        } else {
+            // Re-enable CSS animation when not interacting
+            phoneFrame.style.animation = '';
+            phoneFrame.style.transform = '';
+            isPhoneAnimating = false;
+        }
+    }
+}
 
 // ========== Performance Optimization ==========
 // Lazy load images when implemented
